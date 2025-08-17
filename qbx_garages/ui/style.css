@@ -1,14 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-    --background-color: rgba(20, 20, 20, 0.8);
-    --background-transparent: 20px;
+    --background-color: rgba(20, 20, 20, 0.85);
     --border-color: rgba(255, 255, 255, 0.15);
     --primary-text-color: #FFFFFF;
     --secondary-text-color: #A0A0A0;
     --item-background-color: rgba(255, 255, 255, 0.08);
     --item-hover-background-color: rgba(255, 255, 255, 0.12);
-    --item-selected-background-color: rgba(0, 122, 255, 0.5);
+    --item-selected-background-color: rgba(0, 122, 255, 0.6);
     --button-green-color: #34C759;
     --button-red-color: #FF3B30;
     --button-secondary-color: rgba(100, 100, 100, 0.5);
@@ -24,89 +23,48 @@ body {
     background: transparent !important;
     overflow: hidden;
     color: var(--primary-text-color);
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
 }
 
+/* Painel de Informações (Esquerda) */
 #garage-container {
     position: absolute;
     top: 50%;
-    left: 25%;
+    left: 20%;
     transform: translate(-50%, -50%);
-    width: 850px;
-    height: 600px;
+    width: 380px;
+}
+
+.vehicle-info-container {
+    width: 100%;
+    padding: 25px;
     background: var(--background-color);
-    backdrop-filter: transparent(var(--background-transparent));
-    -webkit-backdrop-filter: transparent(var(--background-transparent));
+    backdrop-filter: transparent(15px);
+    -webkit-backdrop-filter: transparent(15px);
     border-radius: var(--border-radius-main);
     border: 1px solid var(--border-color);
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
     display: flex;
-}
-
-.vehicle-list-container {
-    width: 40%;
-    padding: 20px;
-    border-right: 1px solid var(--border-color);
-    display: flex;
-    flex-direction: column;
-}
-
-.vehicle-info-container {
-    width: 60%;
-    padding: 20px;
-    display: flex;
     flex-direction: column;
     justify-content: space-between;
-    text-align: center;
 }
 
 h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 20px; padding-left: 5px; }
-
-#vehicle-list {
-    overflow-y: auto;
-    flex-grow: 1;
-    padding-right: 10px;
-}
-
-#vehicle-list .vehicle-item {
-    padding: 15px;
-    background-color: var(--item-background-color);
-    border-radius: var(--border-radius-inner);
-    margin-bottom: 10px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.2s ease-in-out;
-    border: 1px solid transparent;
-}
-
-#vehicle-list .vehicle-item:hover {
-    background-color: var(--item-hover-background-color);
-    transform: scale(1.02);
-}
-
-#vehicle-list .vehicle-item.selected {
-    background-color: var(--item-selected-background-color);
-    color: white;
-    font-weight: 600;
-    border-color: rgba(0, 122, 255, 0.8);
-    transform: scale(1.02);
-}
-
 #vehicle-info { text-align: left; margin: 10px 0; }
-
+.info-item, .status-item { margin-bottom: 12px; }
 .info-item {
     font-size: 1rem;
     padding: 15px;
     background-color: var(--item-background-color);
     border-radius: var(--border-radius-inner);
-    margin-bottom: 12px;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 .info-item strong, .status-item strong { font-weight: 600; color: var(--secondary-text-color); }
 .info-item span { font-weight: 500; }
-
-.status-item { margin-bottom: 12px; }
 .status-item strong { display: block; margin-bottom: 8px; padding-left: 5px; }
 .status-bar {
     width: 100%;
@@ -116,12 +74,7 @@ h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 20px; padding-left: 5px
     position: relative;
     overflow: hidden;
 }
-.status-bar-fill {
-    height: 100%;
-    width: 0%;
-    border-radius: 8px;
-    transition: width 0.4s ease-in-out, background-color 0.4s ease;
-}
+.status-bar-fill { height: 100%; width: 0%; border-radius: 8px; transition: width 0.4s ease-in-out, background-color 0.4s ease; }
 .status-bar span {
     position: absolute;
     right: 12px;
@@ -133,54 +86,58 @@ h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 20px; padding-left: 5px
     text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
 }
 
-.button-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr; /* Cria duas colunas de tamanho igual */
-    gap: 10px;
-    margin-top: 20px;
-}
-
-.button-container button {
-    padding: 16px;
-    border: none;
-    border-radius: var(--border-radius-inner);
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: white;
-    transition: all 0.2s ease-in-out;
-}
-
-.button-container button:hover {
-    filter: brightness(1.1);
-    transform: scale(1.02);
-}
-
-.button-container button:disabled {
-    background-color: rgba(255, 255, 255, 0.2) !important;
-    color: rgba(255, 255, 255, 0.5) !important;
-    cursor: not-allowed !important;
-    filter: brightness(1) !important;
-    transform: scale(1) !important;
-}
+.button-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+.button-container button:last-child { grid-column: 1 / -1; } /* Botão Fechar ocupa a largura toda */
+.button-container button { padding: 16px; border: none; border-radius: var(--border-radius-inner); cursor: pointer; font-size: 0.9rem; font-weight: 600; color: white; transition: all 0.2s ease-in-out; }
+.button-container button:hover { filter: brightness(1.1); transform: scale(1.02); }
+.button-container button:disabled { background-color: rgba(255, 255, 255, 0.2) !important; color: rgba(255, 255, 255, 0.5) !important; cursor: not-allowed !important; transform: scale(1) !important; }
 
 #take-out-button { background-color: var(--button-green-color); }
 #close-button { background-color: var(--button-red-color); }
 .button-secondary { background-color: var(--button-secondary-color); }
 .button-secondary:hover { background-color: var(--button-secondary-hover-color) !important; }
 
-.out-indicator {
-    float: right;
-    background-color: #FFCC00;
-    color: #333;
-    font-size: 0.7rem;
-    font-weight: 700;
-    padding: 3px 6px;
-    border-radius: 5px;
-    margin-left: 10px;
+/* Barra de Seleção de Veículos (Inferior) */
+#vehicle-selection-bar {
+    position: absolute;
+    bottom: 30px;
+    width: auto;
+    max-width: 80vw;
+    padding: 15px;
+    background: var(--background-color);
+    backdrop-filter: transparent(15px);
+    -webkit-backdrop-filter: transparent(15px);
+    border-radius: var(--border-radius-main);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
 }
 
-#vehicle-list::-webkit-scrollbar { width: 6px; }
+#vehicle-list {
+    display: flex;
+    flex-direction: row;
+    gap: 15px;
+    overflow-x: auto;
+    padding-bottom: 10px;
+}
+
+.vehicle-item {
+    cursor: pointer;
+    padding: 15px 20px;
+    background-color: var(--item-background-color);
+    border-radius: var(--border-radius-inner);
+    border: 1px solid transparent;
+    transition: all 0.2s ease-in-out;
+    text-align: center;
+    min-width: 180px;
+}
+.vehicle-item:hover { background-color: var(--item-hover-background-color); transform: translateY(-5px); }
+.vehicle-item.selected { background-color: var(--item-selected-background-color); border-color: rgba(0, 122, 255, 0.8); transform: translateY(-5px); }
+
+.vehicle-name { font-weight: 600; font-size: 1rem; }
+.vehicle-plate { font-weight: 500; font-size: 0.8rem; color: var(--secondary-text-color); margin-top: 5px; }
+.out-indicator { background-color: #FFCC00; color: #333; font-size: 0.7rem; font-weight: 700; padding: 3px 6px; border-radius: 5px; margin-left: 8px; }
+
+#vehicle-list::-webkit-scrollbar { height: 6px; }
 #vehicle-list::-webkit-scrollbar-track { background: transparent; }
 #vehicle-list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.3); border-radius: 10px; }
 #vehicle-list::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.5); }

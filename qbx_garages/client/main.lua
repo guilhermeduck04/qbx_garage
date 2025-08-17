@@ -11,15 +11,6 @@ local VehicleCategory = {
     sea = {14},
 }
 
--- Função mais confiável para pegar o veículo próximo
-function GetClosestVehicleNearby()
-    local playerPed = PlayerPedId()
-    local coords = GetEntityCoords(playerPed)
-    local vehicleHandle = GetClosestVehicle(coords.x, coords.y, coords.z, 5.0, 0, 70)
-    return vehicleHandle
-end
-
-
 ---@param category VehicleType
 ---@param vehicle number
 ---@return boolean
@@ -82,26 +73,49 @@ function takeOutOfGarage(vehicleId, garageName, accessPoint)
 end
 
 function parkNearbyVehicle(garageName)
-    local vehicle = GetClosestVehicleNearby()
+    local accessPointCoords = Garages[garageName].accessPoints[garageData.accessPoint].coords
+    local vehicles = GetGamePool('CVehicle')
+    local vehiclesToPark = {}
+    local vehiclesFound = false
 
-    if not vehicle or vehicle == 0 then
+    for _, vehicle in ipairs(vehicles) do
+        if DoesEntityExist(vehicle) and NetworkGetEntityIsNetworked(vehicle) then
+            local vehicleCoords = GetEntityCoords(vehicle)
+            if #(accessPointCoords.xyz - vehicleCoords) < 15.0 then
+                vehiclesFound = true
+                if GetVehicleNumberOfPassengers(vehicle, false, true) > 0 then
+                    exports.qbx_core:Notify(locale('error.vehicle_occupied'), 'error')
+                else
+                    table.insert(vehiclesToPark, vehicle)
+                end
+            end
+        end
+    end
+
+    if not vehiclesFound then
         exports.qbx_core:Notify("Nenhum veículo por perto para guardar.", "error")
         return
     end
 
-    if GetVehicleNumberOfPassengers(vehicle, false, true) > 0 then
-        exports.qbx_core:Notify(locale('error.vehicle_occupied'), 'error')
-        return
+    if #vehiclesToPark == 0 then return end
+
+    local parkedSomething = false
+    for _, vehicle in ipairs(vehiclesToPark) do
+        local netId = NetworkGetNetworkIdFromEntity(vehicle)
+        local props = lib.getVehicleProperties(vehicle)
+        local success = lib.callback.await('qbx_garages:server:parkNearbyVehicle', false, netId, garageName, props)
+        if success then
+            parkedSomething = true
+        end
     end
 
-    local netId = NetworkGetNetworkIdFromEntity(vehicle)
-    local success = lib.callback.await('qbx_garages:server:parkNearbyVehicle', false, netId)
-
-    if success then
-        -- Fecha o menu e reabre para atualizar a lista
-        SendNUIMessage({ action = 'closeAndReopen' })
+    if parkedSomething then
+        SendNUIMessage({ action = 'close' })
+        Wait(100)
+        openGarageMenu(garageData.name, Garages[garageData.name], garageData.accessPoint)
     end
 end
+
 
 ---@param garageName string
 ---@param garageInfo GarageConfig
@@ -130,7 +144,11 @@ function openGarageMenu(garageName, garageInfo, accessPoint)
         })
     end
 
-    openGarageUI(vehicleData, garageName, accessPoint)
+    -- CORREÇÃO AQUI: Prepara os dados do ponto de acesso e adiciona o índice a eles
+    local accessPointData = Garages[garageName].accessPoints[accessPoint]
+    accessPointData.index = accessPoint
+    
+    openGarageUI(vehicleData, garageName, accessPointData)
 end
 
 ---@param vehicle number

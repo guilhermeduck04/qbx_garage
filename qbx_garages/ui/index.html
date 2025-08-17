@@ -7,12 +7,9 @@
 </head>
 <body>
     <div id="garage-container" style="display: none;">
-        <div class="vehicle-list-container">
-            <h1>Seus Veículos</h1>
-            <div id="vehicle-list"></div>
-        </div>
-        <div class="vehicle-info-container">
-            <div> <h1 id="vehicle-name">Selecione um Veículo</h1>
+        <div class="vehicle-info-container" style="display: none;">
+            <div>
+                <h1 id="vehicle-name">Selecione um Veículo</h1>
                 <div id="vehicle-info">
                     <div class="info-item">
                         <strong>Placa</strong>
@@ -42,13 +39,17 @@
                 </div>
             </div>
             <div class="button-container">
-                <button id="park-selected-button" class="button-secondary" disabled>Guardar Selecionado</button>
-                <button id="park-nearby-button" class="button-secondary">Guardar Próximo</button>
                 <button id="take-out-button" disabled>Retirar Veículo</button>
+                <button id="park-nearby-button" class="button-secondary">Guardar Próximo</button>
                 <button id="close-button">Fechar</button>
             </div>
         </div>
     </div>
+
+    <div id="vehicle-selection-bar" style="display: none;">
+        <div id="vehicle-list"></div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>

@@ -184,6 +184,7 @@ local function isParkable(source, vehicleId, garageName)
     end
     ---@type PlayerVehicle
     local playerVehicle = exports.qbx_vehicles:GetPlayerVehicle(vehicleId)
+    if not playerVehicle then return false end -- Adicionado para evitar erro se o veículo não for encontrado
     if getVehicleType(playerVehicle) ~= garage.vehicleType then
         return false
     end
@@ -225,58 +226,37 @@ lib.callback.register('qbx_garages:server:parkVehicle', function(source, netId, 
     return true
 end)
 
-lib.callback.register('qbx_garages:server:parkNearbyVehicle', function(source, netId)
+lib.callback.register('qbx_garages:server:parkNearbyVehicle', function(source, netId, garageName, props)
     local player = exports.qbx_core:GetPlayer(source)
     local vehicle = NetworkGetEntityFromNetworkId(netId)
-    if not vehicle then return end
+    if not vehicle or vehicle == 0 then return false end
 
-    if GetVehicleNumberOfPassengers(vehicle, false, true) > 0 then
-        exports.qbx_core:Notify(source, locale('error.vehicle_occupied'), 'error')
-        return
-    end
-    
     local plate = GetVehicleNumberPlateText(vehicle)
-    local playerVehicle = exports.qbx_vehicles:GetPlayerVehicleByPlate(plate)
-
-    if not playerVehicle then
+    local vehicleId = exports.qbx_vehicles:GetVehicleIdByPlate(plate)
+    if not vehicleId then
         exports.qbx_core:Notify(source, locale('error.not_owned'), 'error')
-        return
+        return false
+    end
+    local dbVehicle = exports.qbx_vehicles:GetPlayerVehicle(vehicleId)
+
+    if not dbVehicle or dbVehicle.citizenid ~= player.PlayerData.citizenid then
+        exports.qbx_core:Notify(source, locale('error.not_owned'), 'error')
+        return false
     end
 
-    -- Guarda o veículo na garagem onde ele estava por último, ou uma padrão.
-    local targetGarage = playerVehicle.garage or 'motelgarage'
+    local garage = Garages[garageName]
+    if getVehicleType(dbVehicle) ~= garage.vehicleType then
+        exports.qbx_core:Notify(source, locale('error.not_correct_type'), 'error')
+        return false
+    end
 
     exports.qbx_vehicles:SaveVehicle(vehicle, {
-        garage = targetGarage,
+        garage = garageName,
         state = VehicleState.GARAGED,
-        props = lib.getVehicleProperties(vehicle)
+        props = props
     })
     
     exports.qbx_core:DeleteVehicle(vehicle)
-    exports.qbx_core:Notify(source, locale('success.vehicle_parked'), 'primary')
-    return true
-end)
-
-lib.callback.register('qbx_garages:server:parkSelectedVehicle', function(source, plate, garage)
-    local veh = FindPlateOnServer(plate)
-    if not veh then 
-        exports.qbx_core:Notify(source, "Veículo não encontrado no mundo.", 'error')
-        return 
-    end
-
-    local owned = isParkable(source, exports.qbx_vehicles:GetVehicleIdByPlate(plate), garage)
-    if not owned then
-        exports.qbx_core:Notify(source, locale('error.not_owned'), 'error')
-        return
-    end
-
-    exports.qbx_vehicles:SaveVehicle(veh, {
-        garage = garage,
-        state = VehicleState.GARAGED,
-        props = lib.getVehicleProperties(veh)
-    })
-
-    exports.qbx_core:DeleteVehicle(veh)
     exports.qbx_core:Notify(source, locale('success.vehicle_parked'), 'primary')
     return true
 end)
