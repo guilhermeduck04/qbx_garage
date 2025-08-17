@@ -2,9 +2,7 @@ local previewVehicle = 0
 local garageData = {}
 local isRotationActive = false
 
--- Declaração antecipada para evitar erros de escopo
-local StopRotationThread
-
+-- Função para rotacionar o holograma
 local function StartRotationThread()
     if isRotationActive then return end
     isRotationActive = true
@@ -13,17 +11,12 @@ local function StartRotationThread()
             Wait(10)
             if previewVehicle and DoesEntityExist(previewVehicle) then
                 SetEntityHeading(previewVehicle, GetEntityHeading(previewVehicle) + 0.4)
-            else
-                if isRotationActive then
-                    -- Se o veículo desapareceu mas a rotação ainda está ativa, pare-a.
-                    StopRotationThread()
-                end
             end
         end
     end)
 end
 
-StopRotationThread = function()
+local function StopRotationThread()
     isRotationActive = false
     if previewVehicle and DoesEntityExist(previewVehicle) then
         DeleteEntity(previewVehicle)
@@ -37,7 +30,9 @@ RegisterNUICallback('previewVehicle', function(data, cb)
     end
     local model = data.model
     RequestModel(model)
-    while not HasModelLoaded(model) do Wait(50) end
+    while not HasModelLoaded(model) do
+        Wait(50)
+    end
     local playerPed = PlayerPedId()
     local coords = GetOffsetFromEntityInWorldCoords(playerPed, 0.0, 5.0, 0.5)
     previewVehicle = CreateVehicle(model, coords.x, coords.y, coords.z, GetEntityHeading(playerPed) + 90.0, false, false)
@@ -61,17 +56,21 @@ RegisterNUICallback('closeMenu', function(data, cb)
 end)
 
 RegisterNUICallback('parkNearbyVehicle', function(data, cb)
-    parkNearbyVehicle()
+    parkNearbyVehicle(garageData.name)
     cb('ok')
 end)
 
 RegisterNUICallback('parkSelectedVehicle', function(data, cb)
     local success = lib.callback.await('qbx_garages:server:parkSelectedVehicle', false, data.plate, garageData.name)
     if success then
-        TriggerEvent('qbx_garages:client:reopenMenu')
+        -- Fecha o menu e reabre para atualizar a lista
+        SendNUIMessage({ action = 'close' })
+        Wait(100)
+        openGarageMenu(garageData.name, Garages[garageData.name], garageData.accessPoint)
     end
     cb('ok')
 end)
+
 
 function openGarageUI(vehicles, garageName, accessPoint)
     garageData = {name = garageName, accessPoint = accessPoint}
@@ -82,10 +81,3 @@ function openGarageUI(vehicles, garageName, accessPoint)
     SetNuiFocus(true, true)
     StartRotationThread()
 end
-
-AddEventHandler('onResourceStop', function(resource)
-    if resource == GetCurrentResourceName() then
-        StopRotationThread()
-        SetNuiFocus(false, false)
-    end
-end)
