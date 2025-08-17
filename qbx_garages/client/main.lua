@@ -1,25 +1,8 @@
 local config = require 'config.client'
 if not config.enableClient then return end
 local VEHICLES = exports.qbx_core:GetVehiclesByName()
-
----@enum ProgressColor
-local ProgressColor = {
-    GREEN = 'green.5',
-    YELLOW = 'yellow.5',
-    RED = 'red.5'
-}
-
----@param percent number
----@return string
-local function getProgressColor(percent)
-    if percent >= 75 then
-        return ProgressColor.GREEN
-    elseif percent > 25 then
-        return ProgressColor.YELLOW
-    else
-        return ProgressColor.RED
-    end
-end
+local Garages = {}
+local garageData = {}
 
 local VehicleCategory = {
     all = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22},
@@ -27,6 +10,15 @@ local VehicleCategory = {
     air = {15, 16},
     sea = {14},
 }
+
+-- Função mais confiável para pegar o veículo próximo
+function GetClosestVehicleNearby()
+    local playerPed = PlayerPedId()
+    local coords = GetEntityCoords(playerPed)
+    local vehicleHandle = GetClosestVehicle(coords.x, coords.y, coords.z, 5.0, 0, 70)
+    return vehicleHandle
+end
+
 
 ---@param category VehicleType
 ---@param vehicle number
@@ -56,7 +48,7 @@ local spawnLock = false
 ---@param vehicleId number
 ---@param garageName string
 ---@param accessPoint integer
-local function takeOutOfGarage(vehicleId, garageName, accessPoint)
+function takeOutOfGarage(vehicleId, garageName, accessPoint)
     if spawnLock then
         exports.qbx_core:Notify(locale('error.spawn_in_progress'))
     end
@@ -89,97 +81,33 @@ local function takeOutOfGarage(vehicleId, garageName, accessPoint)
     assert(success, result)
 end
 
----@param vehicle PlayerVehicle
----@param garageName string
----@param garageInfo GarageConfig
----@param accessPoint integer
-local function displayVehicleInfo(vehicle, garageName, garageInfo, accessPoint)
-    local engine = qbx.math.round(vehicle.props.engineHealth / 10)
-    local body = qbx.math.round(vehicle.props.bodyHealth / 10)
-    local engineColor = getProgressColor(engine)
-    local bodyColor = getProgressColor(body)
-    local fuelColor = getProgressColor(vehicle.props.fuelLevel)
-    local vehicleLabel = ('%s %s'):format(VEHICLES[vehicle.modelName].brand, VEHICLES[vehicle.modelName].name)
+function parkNearbyVehicle(garageName)
+    local vehicle = GetClosestVehicleNearby()
 
-    local options = {
-        {
-            title = locale('menu.information'),
-            icon = 'circle-info',
-            description = locale('menu.description', vehicleLabel, vehicle.props.plate, lib.math.groupdigits(vehicle.depotPrice)),
-            readOnly = true,
-        },
-        {
-            title = locale('menu.body'),
-            icon = 'car-side',
-            readOnly = true,
-            progress = body,
-            colorScheme = bodyColor,
-        },
-        {
-            title = locale('menu.engine'),
-            icon = 'oil-can',
-            readOnly = true,
-            progress = engine,
-            colorScheme = engineColor,
-        },
-        {
-            title = locale('menu.fuel'),
-            icon = 'gas-pump',
-            readOnly = true,
-            progress = vehicle.props.fuelLevel,
-            colorScheme = fuelColor,
-        }
-    }
-
-    if vehicle.state == VehicleState.OUT then
-        if garageInfo.type == GarageType.DEPOT then
-            options[#options + 1] = {
-                title = 'Take out',
-                icon = 'fa-truck-ramp-box',
-                description = ('$%s'):format(lib.math.groupdigits(vehicle.depotPrice)),
-                arrow = true,
-                onSelect = function()
-                    takeOutOfGarage(vehicle.id, garageName, accessPoint)
-                end,
-            }
-        else
-            options[#options + 1] = {
-                title = 'Your vehicle is already out...',
-                icon = VehicleType.CAR,
-                readOnly = true,
-            }
-        end
-    elseif vehicle.state == VehicleState.GARAGED then
-        options[#options + 1] = {
-            title = locale('menu.take_out'),
-            icon = 'car-rear',
-            arrow = true,
-            onSelect = function()
-                takeOutOfGarage(vehicle.id, garageName, accessPoint)
-            end,
-        }
-    elseif vehicle.state == VehicleState.IMPOUNDED then
-        options[#options + 1] = {
-            title = locale('menu.veh_impounded'),
-            icon = 'building-shield',
-            readOnly = true,
-        }
+    if not vehicle or vehicle == 0 then
+        exports.qbx_core:Notify("Nenhum veículo por perto para guardar.", "error")
+        return
     end
 
-    lib.registerContext({
-        id = 'vehicleList',
-        title = garageInfo.label,
-        menu = 'garageMenu',
-        options = options,
-    })
+    if GetVehicleNumberOfPassengers(vehicle, false, true) > 0 then
+        exports.qbx_core:Notify(locale('error.vehicle_occupied'), 'error')
+        return
+    end
 
-    lib.showContext('vehicleList')
+    local netId = NetworkGetNetworkIdFromEntity(vehicle)
+    local success = lib.callback.await('qbx_garages:server:parkNearbyVehicle', false, netId)
+
+    if success then
+        -- Fecha o menu e reabre para atualizar a lista
+        SendNUIMessage({ action = 'closeAndReopen' })
+    end
 end
 
 ---@param garageName string
 ---@param garageInfo GarageConfig
 ---@param accessPoint integer
-local function openGarageMenu(garageName, garageInfo, accessPoint)
+function openGarageMenu(garageName, garageInfo, accessPoint)
+    garageData = {name = garageName, accessPoint = accessPoint}
     ---@type PlayerVehicle[]?
     local vehicleEntities = lib.callback.await('qbx_garages:server:getGarageVehicles', false, garageName)
 
@@ -188,32 +116,21 @@ local function openGarageMenu(garageName, garageInfo, accessPoint)
         return
     end
 
-    table.sort(vehicleEntities, function(a, b)
-        return a.modelName < b.modelName
-    end)
-
-    local options = {}
-    for i = 1, #vehicleEntities do
-        local vehicleEntity = vehicleEntities[i]
-        local vehicleLabel = ('%s %s'):format(VEHICLES[vehicleEntity.modelName].brand, VEHICLES[vehicleEntity.modelName].name)
-
-        options[#options + 1] = {
-            title = vehicleLabel,
-            description = vehicleEntity.props.plate,
-            arrow = true,
-            onSelect = function()
-                displayVehicleInfo(vehicleEntity, garageName, garageInfo, accessPoint)
-            end,
-        }
+    local vehicleData = {}
+    for i=1, #vehicleEntities do
+        local vehicle = vehicleEntities[i]
+        local vehicleInfo = VEHICLES[vehicle.modelName]
+        table.insert(vehicleData, {
+            id = vehicle.id,
+            modelName = vehicle.modelName,
+            brand = vehicleInfo.brand,
+            name = vehicleInfo.name,
+            props = vehicle.props,
+            state = vehicle.state
+        })
     end
 
-    lib.registerContext({
-        id = 'garageMenu',
-        title = garageInfo.label,
-        options = options,
-    })
-
-    lib.showContext('garageMenu')
+    openGarageUI(vehicleData, garageName, accessPoint)
 end
 
 ---@param vehicle number
@@ -266,7 +183,7 @@ local function createZones(garageName, garage, accessPoint, accessPointIndex)
                 if accessPoint.dropPoint and garage.type ~= GarageType.DEPOT then
                     dropZone = lib.zones.sphere({
                         coords = accessPoint.dropPoint,
-                        radius = 1.5,
+                        radius = 2.5,
                         onEnter = function()
                             if not cache.vehicle then return end
                             lib.showTextUI(locale('info.park_e'))
@@ -286,7 +203,7 @@ local function createZones(garageName, garage, accessPoint, accessPointIndex)
                 end
                 coordsZone = lib.zones.sphere({
                     coords = accessPoint.coords,
-                    radius = 1,
+                    radius = 1.5,
                     onEnter = function()
                         if accessPoint.dropPoint and cache.vehicle then return end
                         lib.showTextUI((garage.type == GarageType.DEPOT and locale('info.impound_e')) or (cache.vehicle and locale('info.park_e')) or locale('info.car_e'))
@@ -342,6 +259,7 @@ local function createBlips(garageInfo, accessPoint)
 end
 
 local function createGarage(name, garage)
+    Garages[name] = garage
     local accessPoints = garage.accessPoints
     for i = 1, #accessPoints do
         local accessPoint = accessPoints[i]
@@ -355,14 +273,21 @@ local function createGarage(name, garage)
 end
 
 local function createGarages()
-    local garages = lib.callback.await('qbx_garages:server:getGarages')
-    for name, garage in pairs(garages) do
+    local serverGarages = lib.callback.await('qbx_garages:server:getGarages')
+    for name, garage in pairs(serverGarages) do
         createGarage(name, garage)
     end
 end
 
 RegisterNetEvent('qbx_garages:client:garageRegistered', function(name, garage)
     createGarage(name, garage)
+end)
+
+-- Evento para reabrir o menu após guardar um veículo
+RegisterNetEvent('qbx_garages:client:reopenMenu', function()
+    if garageData and garageData.name then
+        openGarageMenu(garageData.name, Garages[garageData.name], garageData.accessPoint)
+    end
 end)
 
 CreateThread(function()

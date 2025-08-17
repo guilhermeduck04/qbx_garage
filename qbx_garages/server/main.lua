@@ -89,9 +89,10 @@ function FindPlateOnServer(plate)
     local vehicles = GetAllVehicles()
     for i = 1, #vehicles do
         if plate == GetVehicleNumberPlateText(vehicles[i]) then
-            return true
+            return vehicles[i]
         end
     end
+    return false
 end
 
 ---@param garage string
@@ -113,8 +114,15 @@ function GetPlayerVehicleFilter(source, garageName)
     local garage = Garages[garageName]
     local filter = {}
     filter.citizenid = not garage.shared and player.PlayerData.citizenid or nil
-    filter.states = garage.states or VehicleState.GARAGED
-    filter.garage = not garage.skipGarageCheck and garageName or nil
+    
+    if Config.universalGarages then
+        filter.states = { VehicleState.GARAGED, VehicleState.OUT } -- Mostra veículos guardados e fora
+        filter.garage = nil -- Remove o filtro de garagem específica
+    else
+        filter.states = garage.states or VehicleState.GARAGED
+        filter.garage = not garage.skipGarageCheck and garageName or nil
+    end
+
     return filter
 end
 
@@ -152,11 +160,9 @@ lib.callback.register('qbx_garages:server:getGarageVehicles', function(source, g
     local toSend = {}
     if not playerVehicles[1] then return end
     for _, vehicle in pairs(playerVehicles) do
-        if not FindPlateOnServer(vehicle.props.plate) then
-            local vehicleType = Garages[garageName].vehicleType
-            if vehicleType == getVehicleType(vehicle) then
-                toSend[#toSend + 1] = vehicle
-            end
+        local vehicleType = Garages[garageName].vehicleType
+        if vehicleType == getVehicleType(vehicle) then
+            toSend[#toSend + 1] = vehicle
         end
     end
     return toSend
@@ -216,6 +222,63 @@ lib.callback.register('qbx_garages:server:parkVehicle', function(source, netId, 
     })
 
     exports.qbx_core:DeleteVehicle(vehicle)
+    return true
+end)
+
+lib.callback.register('qbx_garages:server:parkNearbyVehicle', function(source, netId)
+    local player = exports.qbx_core:GetPlayer(source)
+    local vehicle = NetworkGetEntityFromNetworkId(netId)
+    if not vehicle then return end
+
+    if GetVehicleNumberOfPassengers(vehicle, false, true) > 0 then
+        exports.qbx_core:Notify(source, locale('error.vehicle_occupied'), 'error')
+        return
+    end
+    
+    local plate = GetVehicleNumberPlateText(vehicle)
+    local playerVehicle = exports.qbx_vehicles:GetPlayerVehicleByPlate(plate)
+
+    if not playerVehicle then
+        exports.qbx_core:Notify(source, locale('error.not_owned'), 'error')
+        return
+    end
+
+    -- Guarda o veículo na garagem onde ele estava por último, ou uma padrão.
+    local targetGarage = playerVehicle.garage or 'motelgarage'
+
+    exports.qbx_vehicles:SaveVehicle(vehicle, {
+        garage = targetGarage,
+        state = VehicleState.GARAGED,
+        props = lib.getVehicleProperties(vehicle)
+    })
+    
+    exports.qbx_core:DeleteVehicle(vehicle)
+    exports.qbx_core:Notify(source, locale('success.vehicle_parked'), 'primary')
+    return true
+end)
+
+lib.callback.register('qbx_garages:server:parkSelectedVehicle', function(source, plate, garage)
+    local veh = FindPlateOnServer(plate)
+    if not veh then 
+        exports.qbx_core:Notify(source, "Veículo não encontrado no mundo.", 'error')
+        return 
+    end
+
+    local owned = isParkable(source, exports.qbx_vehicles:GetVehicleIdByPlate(plate), garage)
+    if not owned then
+        exports.qbx_core:Notify(source, locale('error.not_owned'), 'error')
+        return
+    end
+
+    exports.qbx_vehicles:SaveVehicle(veh, {
+        garage = garage,
+        state = VehicleState.GARAGED,
+        props = lib.getVehicleProperties(veh)
+    })
+
+    exports.qbx_core:DeleteVehicle(veh)
+    exports.qbx_core:Notify(source, locale('success.vehicle_parked'), 'primary')
+    return true
 end)
 
 AddEventHandler('onResourceStart', function(resource)

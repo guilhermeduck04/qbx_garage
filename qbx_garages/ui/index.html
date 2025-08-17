@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Garage</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="garage-container" style="display: none;">
+        <div class="vehicle-list-container">
+            <h1>Seus Veículos</h1>
+            <div id="vehicle-list"></div>
+        </div>
+        <div class="vehicle-info-container">
+            <div> <h1 id="vehicle-name">Selecione um Veículo</h1>
+                <div id="vehicle-info">
+                    <div class="info-item">
+                        <strong>Placa</strong>
+                        <span id="vehicle-plate">N/A</span>
+                    </div>
+                    <div class="status-item">
+                        <strong>Motor</strong>
+                        <div class="status-bar">
+                            <div class="status-bar-fill" id="vehicle-engine-fill"></div>
+                            <span id="vehicle-engine-text">0%</span>
+                        </div>
+                    </div>
+                    <div class="status-item">
+                        <strong>Lataria</strong>
+                        <div class="status-bar">
+                            <div class="status-bar-fill" id="vehicle-body-fill"></div>
+                            <span id="vehicle-body-text">0%</span>
+                        </div>
+                    </div>
+                    <div class="status-item">
+                        <strong>Combustível</strong>
+                        <div class="status-bar">
+                            <div class="status-bar-fill" id="vehicle-fuel-fill"></div>
+                            <span id="vehicle-fuel-text">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="button-container">
+                <button id="park-selected-button" class="button-secondary" disabled>Guardar Selecionado</button>
+                <button id="park-nearby-button" class="button-secondary">Guardar Próximo</button>
+                <button id="take-out-button" disabled>Retirar Veículo</button>
+                <button id="close-button">Fechar</button>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
