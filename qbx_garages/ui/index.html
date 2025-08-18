@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Garage</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
     <div id="garage-container" style="display: none;">
@@ -12,25 +13,25 @@
                 <h1 id="vehicle-name">Selecione um Veículo</h1>
                 <div id="vehicle-info">
                     <div class="info-item">
-                        <strong>Placa</strong>
+                        <strong><i class="fa-solid fa-id-card"></i> Placa</strong>
                         <span id="vehicle-plate">N/A</span>
                     </div>
                     <div class="status-item">
-                        <strong>Motor</strong>
+                        <strong><i class="fa-solid fa-oil-can"></i> Motor</strong>
                         <div class="status-bar">
                             <div class="status-bar-fill" id="vehicle-engine-fill"></div>
                             <span id="vehicle-engine-text">0%</span>
                         </div>
                     </div>
                     <div class="status-item">
-                        <strong>Lataria</strong>
+                        <strong><i class="fa-solid fa-car-side"></i> Lataria</strong>
                         <div class="status-bar">
                             <div class="status-bar-fill" id="vehicle-body-fill"></div>
                             <span id="vehicle-body-text">0%</span>
                         </div>
                     </div>
                     <div class="status-item">
-                        <strong>Combustível</strong>
+                        <strong><i class="fa-solid fa-gas-pump"></i> Combustível</strong>
                         <div class="status-bar">
                             <div class="status-bar-fill" id="vehicle-fuel-fill"></div>
                             <span id="vehicle-fuel-text">0%</span>
@@ -39,9 +40,9 @@
                 </div>
             </div>
             <div class="button-container">
-                <button id="take-out-button" disabled>Retirar Veículo</button>
-                <button id="park-nearby-button" class="button-secondary">Guardar Próximo</button>
-                <button id="close-button">Fechar</button>
+                <button id="take-out-button" disabled><i class="fa-solid fa-car-rear"></i> Retirar Veículo</button>
+                <button id="park-nearby-button" class="button-secondary"><i class="fa-solid fa-download"></i> Guardar Próximo</button>
+                <button id="close-button"><i class="fa-solid fa-xmark"></i> Fechar</button>
             </div>
         </div>
     </div>

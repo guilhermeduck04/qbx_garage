@@ -144,7 +144,6 @@ function openGarageMenu(garageName, garageInfo, accessPoint)
         })
     end
 
-    -- CORREÇÃO AQUI: Prepara os dados do ponto de acesso e adiciona o índice a eles
     local accessPointData = Garages[garageName].accessPoints[accessPoint]
     accessPointData.index = accessPoint
     
@@ -201,19 +200,19 @@ local function createZones(garageName, garage, accessPoint, accessPointIndex)
                 if accessPoint.dropPoint and garage.type ~= GarageType.DEPOT then
                     dropZone = lib.zones.sphere({
                         coords = accessPoint.dropPoint,
-                        radius = 2.5,
-                        onEnter = function()
-                            if not cache.vehicle then return end
-                            lib.showTextUI(locale('info.park_e'))
-                        end,
+                        radius = 3.5,
                         onExit = function()
                             lib.hideTextUI()
                         end,
                         inside = function()
-                            if not cache.vehicle then return end
-                            if IsControlJustReleased(0, 38) then
-                                if not checkCanAccess(garage) then return end
-                                parkVehicle(cache.vehicle, garageName)
+                            if cache.vehicle then
+                                lib.showTextUI(locale('info.park_e'))
+                                if IsControlJustReleased(0, 38) then
+                                    if not checkCanAccess(garage) then return end
+                                    parkVehicle(cache.vehicle, garageName)
+                                end
+                            else
+                                lib.hideTextUI()
                             end
                         end,
                         debug = config.debugPoly
@@ -221,16 +220,18 @@ local function createZones(garageName, garage, accessPoint, accessPointIndex)
                 end
                 coordsZone = lib.zones.sphere({
                     coords = accessPoint.coords,
-                    radius = 1.5,
-                    onEnter = function()
-                        if accessPoint.dropPoint and cache.vehicle then return end
-                        lib.showTextUI((garage.type == GarageType.DEPOT and locale('info.impound_e')) or (cache.vehicle and locale('info.park_e')) or locale('info.car_e'))
-                    end,
+                    radius = 2.0,
                     onExit = function()
                         lib.hideTextUI()
                     end,
                     inside = function()
-                        if accessPoint.dropPoint and cache.vehicle then return end
+                        if accessPoint.dropPoint and accessPoint.dropPoint ~= accessPoint.coords and cache.vehicle then
+                            lib.hideTextUI()
+                            return
+                        end
+                        
+                        lib.showTextUI((garage.type == GarageType.DEPOT and locale('info.impound_e')) or (cache.vehicle and locale('info.park_e')) or locale('info.car_e'))
+
                         if IsControlJustReleased(0, 38) then
                             if not checkCanAccess(garage) then return end
                             if cache.vehicle and garage.type ~= GarageType.DEPOT then
@@ -244,11 +245,13 @@ local function createZones(garageName, garage, accessPoint, accessPointIndex)
                 })
             end,
             onExit = function()
-                if dropZone then
+                if dropZone and dropZone.remove then
                     dropZone:remove()
+                    dropZone = nil
                 end
-                if coordsZone then
+                if coordsZone and coordsZone.remove then
                     coordsZone:remove()
+                    coordsZone = nil
                 end
             end,
             inside = function()
@@ -301,7 +304,6 @@ RegisterNetEvent('qbx_garages:client:garageRegistered', function(name, garage)
     createGarage(name, garage)
 end)
 
--- Evento para reabrir o menu após guardar um veículo
 RegisterNetEvent('qbx_garages:client:reopenMenu', function()
     if garageData and garageData.name then
         openGarageMenu(garageData.name, Garages[garageData.name], garageData.accessPoint)
